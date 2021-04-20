@@ -14,3 +14,12 @@
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::group(['prefix' => '/route'], function ()  {
+    Route::get('/graph', 'RouteController@getGraph');
+});
+
+Route::group(['prefix' => '/upload-file'], function () {
+    Route::get('/', 'UploadRouteController@uploadForm');
+    Route::post('/', 'UploadRouteController@uploadFile');
+});

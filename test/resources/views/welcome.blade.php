@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>Laravel</title>
 
@@ -80,18 +81,191 @@
             @endif
 
             <div class="content">
-                <div class="title m-b-md">
-                    Laravel
-                </div>
 
-                <div class="links">
-                    <a href="https://laravel.com/docs">Docs</a>
-                    <a href="https://laracasts.com">Laracasts</a>
-                    <a href="https://laravel-news.com">News</a>
-                    <a href="https://blog.laravel.com">Blog</a>
-                    <a href="https://nova.laravel.com">Nova</a>
-                    <a href="https://forge.laravel.com">Forge</a>
-                    <a href="https://github.com/laravel/laravel">GitHub</a>
+                <a href="{{url('/upload-file')}}">Upload routes</a>
+
+                <div class="title m-b-md">
+                    <select id="start-route">
+                        <option value="start">start</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="finish">finish</option>
+                    </select>
+
+                    <select id="end-route">
+                        <option value="start">start</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="finish">finish</option>
+                    </select>
+
+                    <div id="result"></div>
+
+
+                    <script>
+                        (function() {
+                            const startNode = document.getElementById('start-route');
+                            const endNode = document.getElementById('end-route');
+                            const result = document.getElementById('result');
+                            let graph = {};
+
+                            startNode.addEventListener('change', function() {
+                                console.log(this.value);
+                            });
+
+                            endNode.addEventListener('change', function() {
+                                const shortRoute = findShortestPath(graph, startNode.value, this.value);
+                                const gratesRoute = findGratesPath(graph, startNode.value, this.value);
+                                result.innerHTML = ``;
+
+                                let routes = document.createElement('select');
+                                routes.id = "route-alternatives";
+                                let option = document.createElement("option");
+                                option.value = shortRoute.path.join(',');
+                                option.text = `${shortRoute.path.join(', ')} (distance: ${shortRoute.distance})`;
+                                routes.appendChild(option);
+                                option = document.createElement("option");
+                                option.value = gratesRoute.path.join(',');
+                                option.text = `${gratesRoute.path.join(', ')} (distance: ${gratesRoute.distance})`;
+                                routes.appendChild(option);
+
+                                result.appendChild(routes);
+                            });
+
+                            const shortestDistanceNode = (distances, visited) => {
+                                let shortest = null;
+
+                                for (let node in distances) {
+                                    let currentIsShortest =
+                                        shortest === null || distances[node] < distances[shortest];
+                                    if (currentIsShortest && !visited.includes(node)) {
+                                        shortest = node;
+                                    }
+                                }
+                                return shortest;
+                            };
+                            const findShortestPath = (graph, startNode, endNode) => {
+                                let distances = {};
+                                distances[endNode] = "Infinity";
+                                distances = Object.assign(distances, graph[startNode]);
+
+                                let parents = { endNode: null };
+                                for (let child in graph[startNode]) {
+                                    parents[child] = startNode;
+                                }
+
+                                let visited = [];
+                                let node = shortestDistanceNode(distances, visited);
+                                while (node) {
+                                    let distance = distances[node];
+                                    let children = graph[node];
+                                    for (let child in children) {
+                                        if (String(child) === String(startNode)) {
+                                            continue;
+                                        } else {
+                                            let newdistance = distance + children[child];
+                                            if (!distances[child] || distances[child] > newdistance) {
+                                                distances[child] = newdistance;
+                                                parents[child] = node;
+                                            }
+                                        }
+                                    }
+                                    visited.push(node);
+                                    node = shortestDistanceNode(distances, visited);
+                                }
+
+                                let shortestPath = [endNode];
+                                let parent = parents[endNode];
+                                while (parent) {
+                                    shortestPath.push(parent);
+                                    parent = parents[parent];
+                                }
+                                shortestPath.reverse();
+
+                                let results = {
+                                    distance: distances[endNode],
+                                    path: shortestPath,
+                                };
+
+                                return results;
+                            };
+
+                            const gratesDistanceNode = (distances, visited) => {
+                                let shortest = null;
+
+                                for (let node in distances) {
+                                    let currentIsShortest =
+                                        shortest === null || distances[node] > distances[shortest];
+                                    if (currentIsShortest && !visited.includes(node)) {
+                                        shortest = node;
+                                    }
+                                }
+                                return shortest;
+                            };
+                            const findGratesPath = (graph, startNode, endNode) => {
+                                let distances = {};
+                                distances[endNode] = "Infinity";
+                                distances = Object.assign(distances, graph[startNode]);
+
+                                let parents = { endNode: null };
+                                for (let child in graph[startNode]) {
+                                    parents[child] = startNode;
+                                }
+
+                                let visited = [];
+                                let node = gratesDistanceNode(distances, visited);
+                                while (node) {
+                                    let distance = distances[node];
+                                    let children = graph[node];
+                                    for (let child in children) {
+                                        if (String(child) === String(startNode)) {
+                                            continue;
+                                        } else {
+                                            let newdistance = distance + children[child];
+                                            if (!distances[child] || distances[child] < newdistance) {
+                                                distances[child] = newdistance;
+                                                parents[child] = node;
+                                            }
+                                        }
+                                    }
+                                    visited.push(node);
+                                    node = gratesDistanceNode(distances, visited);
+                                }
+
+                                let shortestPath = [endNode];
+                                let parent = parents[endNode];
+                                while (parent) {
+                                    shortestPath.push(parent);
+                                    parent = parents[parent];
+                                }
+                                shortestPath.reverse();
+
+                                let results = {
+                                    distance: distances[endNode],
+                                    path: shortestPath,
+                                };
+
+                                return results;
+                            };
+
+                            fetch('/route/graph', {
+                                method: "GET", headers: {
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                },
+                            })
+                            .then((response) => {
+                                return response.json().then((data) => {
+                                    return graph = data;
+                                }).catch((err) => {
+                                    console.log(err);
+                                })
+                            });
+                        })();
+                    </script>
                 </div>
             </div>
         </div>
